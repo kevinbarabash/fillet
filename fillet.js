@@ -16,7 +16,7 @@ class Scene extends Component {
     super(props)
 
     this.state = {
-      points: [[300, 300], [300, 10], [10, 10], [10, 300], [300, 300]],
+      points: [[300, 300], [300, 10], [10, 10], [10, 300]],
       selection: -1,
     }
 
@@ -54,33 +54,40 @@ class Scene extends Component {
     const {points} = this.state;
     const pointStr = points.map((point) => point.join(' ')).join(' ')
 
-    // const v1 = sub(points[1], points[0])
-    // const v2 = sub(points[1], points[2])
-
-    // console.log(`v1 = ${v1}`)
-    // console.log(`v2 = ${v2}`)
-    // console.log(`dot = ${dot(v2, v1)}`)
-
-    // TODO: determine the line connect all of the fillets
-    // TODO: define a complete path
     // TODO: allow different sizes of fillets
     // TODO: warn when fillets cause an discontinuous path
 
     const fillets = []
     const fr = 30
 
-    for (let i = 0; i < points.length - 2; i++) {
-      const v1 = sub(points[i+1], points[i+0])
-      const v2 = sub(points[i+1], points[i+2])
+    const len = points.length;
+    for (let i = 0; i < points.length; i++) {
+      const v1 = sub(points[(i+1) % len], points[(i+0) % len])
+      const v2 = sub(points[(i+1) % len], points[(i+2) % len])
 
       const angle = Math.acos(dot(v1, v2) / (length(v1) * length(v2)))
       const cp = cross(v1, v2);
       const hyp = 30 / Math.sin(angle / 2)
       const adj = Math.cos(angle / 2) * hyp
-      const start = add(points[i+1], scale(adj, unit(sub(points[i+0], points[i+1]))))
-      const end = add(points[i+1], scale(adj, unit(sub(points[i+2], points[i+1]))))
+      const start = add(points[(i+1) % len], scale(adj, unit(sub(points[(i+0) % len], points[(i+1) % len]))))
+      const end = add(points[(i+1) % len], scale(adj, unit(sub(points[(i+2) % len], points[(i+1) % len]))))
 
       fillets.push({start, end, cp})
+    }
+
+    // <polyline fill='none' stroke='black' points={pointStr}/>
+
+    const lines = [];
+    for (let i = 0; i < fillets.length; i++) {
+      const f1 = fillets[i];
+      const f2 = fillets[(i+1) % fillets.length];
+
+      lines.push({
+        x1: f1.end[0],
+        y1: f1.end[1],
+        x2: f2.start[0],
+        y2: f2.start[1],
+      })
     }
 
     return <svg
@@ -90,10 +97,11 @@ class Scene extends Component {
       onMouseMove={this.handleMouseMove}
       onMouseUp={this.handleMouseUp}
     >
-      <polyline fill='none' stroke='black' points={pointStr}/>
+      {points.map((point) => <circle cx={point[0]} cy={point[1]} r='5'/>)}
       {fillets.map(({start, end, cp}) =>
         <path fill='none' stroke='black' d={`M${start[0]} ${start[1]} A ${fr} ${fr} 0 0 ${cp > 0 ? 0 : 1} ${end[0]} ${end[1]}`}/>
       )}
+      {lines.map((line) => <line stroke='black' {...line}/>)}
     </svg>
   }
 }
